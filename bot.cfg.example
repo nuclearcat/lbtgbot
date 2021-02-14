@@ -5,3 +5,4 @@ trustedseed = "SomeSeed"
 
 [users]
 trusted = [ 238455107,]
+newmembers = []

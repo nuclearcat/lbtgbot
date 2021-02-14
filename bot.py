@@ -69,6 +69,12 @@ def posts_from_channels(message):
 def posts_from_channels(message):
     bot.reply_to(message, 'Msg fwd heh?')
 
+@bot.message_handler(content_types=[
+    "new_chat_members"
+])
+def new_chat_member_handling(message):
+    bot.reply_to(message, "Welcome to our chat!")
+    cfgopt["users"]["newmembers"].append(message.from_user.id)
 
 #@bot.message_handler(func=lambda m: True, content_types=["text", "photo", "video"])
 #def handle_all(message):
