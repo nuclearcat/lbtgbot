@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 #pip3 install PyTelegramBotAPI==3.6.7
+#https://github.com/eternnoir/pyTelegramBotAPI
 import telebot
 import toml
 import json
 import hashlib
+import time
 
 def pretty(d, indent=0):
    for key, value in d.items():
@@ -69,6 +71,10 @@ def posts_from_channels(message):
 def posts_from_channels(message):
     bot.reply_to(message, 'Msg fwd heh?')
 
+
+# TODO: Check new member id to estimate age?
+# TODO: Disable for unconfirmed members anything else than plain text messages?
+# TODO: Handle new members send picture spam? (test)
 @bot.message_handler(content_types=[
     "new_chat_members"
 ])
@@ -76,10 +82,26 @@ def new_chat_member_handling(message):
     bot.reply_to(message, "Welcome to our chat!")
     cfgopt["users"]["newmembers"].append(message.from_user.id)
 
-#@bot.message_handler(func=lambda m: True, content_types=["text", "photo", "video"])
-#def handle_all(message):
-#    print(type(message))
+@bot.message_handler(func=lambda m: True, content_types=["text", "photo", "video"])
+def handle_all(message):
+    if (message.from_user.id in cfgopt["users"]["newmembers"] and len(message.entities) > 0):
+      user_id = message.from_user.id 
+      user_name = message.from_user.first_name 
+      mention = "["+user_name+"](tg://user?id="+str(user_id)+")"            
+
+      bot.reply_to(message, 'Hey, please dont send any links/etc, you are temporary muted. After mute expires, as you are new member, please introduce yourself(text only), so we can know if you are human, not spammer.')
+      bot.delete_message(message.chat.id, message.message_id)
+      bot.restrict_chat_member(message.chat.id, message.from_user.id, until_date=time.time()+ 60)
+
+#    print("DEBUG:")
 #    print(message)
+#    bot.reply_to(message, 'Debug, entities: ' + str(len(message.entities)))
 
+try:
+  bot.polling(none_stop=True)
+except Exception as e:
 
-bot.polling()
+        logger.error(e)
+
+        time.sleep(15)
+
