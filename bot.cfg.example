@@ -1,8 +1,11 @@
 [auth]
 token = ""
 trustedseed = "SomeSeed"
-#hackme = 1
+#trustme = 1
 
 [users]
 trusted = [ 238455107,]
 newmembers = []
+
+[misc]
+fightage = 300
