@@ -19,18 +19,19 @@ def pretty(d, indent=0):
 cfgopt = {}
 cfgopt["users"] = {}
 cfgopt["users"]["trusted"] = []
+cfgopt["users"]["normal"] = []
 
 with open(r'bot.cfg') as file:
   cfgopt = toml.load(file, _dict=dict)
   print(cfgopt)
 
-logging.basicConfig(filename='bot.log', level=logging.DEBUG)
+logging.basicConfig(filename='bot.log', level=logging.INFO)
 
 bot = telebot.TeleBot(cfgopt["auth"]["token"])
 
-@bot.message_handler(commands=['start', 'help', 'trustme', 'userid', 'hackme', 'spam', 'nofight', 'debug'])
+@bot.message_handler(commands=['start', 'help', 'trustme', 'userid', 'hackme', 'spam', 'nofight', 'debug','getadmin'])
 def commands_handling(message):
-    print(message)
+#    print(message)
     if(message.chat.type == "private"):
         if (message.text.startswith("/start")):
             bot.reply_to(message, cfgopt["users"]["startmsg"])
@@ -46,6 +47,7 @@ def commands_handling(message):
         if (message.text.startswith("/debug")):
             print(message)
 
+
 #        if (message.text.startswith("/trustme") and cfgopt["auth"]["trustme"] == 1 and message.from_user.id not in cfgopt["users"]["newmembers"]):
 #         if (not message.from_user.id in cfgopt["users"]["trusted"]):
 #          bot.reply_to(message, "Hello Master, i added you to trusted list")
@@ -55,43 +57,37 @@ def commands_handling(message):
 #         else:
 #            bot.reply_to(message, "You are already trusted or bot have bug")
 
+    if (message.text.startswith("/getadmin")):
+           info = bot.get_chat_member(message.chat.id, message.from_user.id)
+           print("Getadmin debug")
+           print(info)
+           bot.delete_message(message.chat.id, message.message_id)
+
+
     if(message.chat.type == "supergroup" and message.text.startswith("/spam")):
         if (message.from_user.id in cfgopt["users"]["trusted"] and message.reply_to_message is not None):
-            logging.info('User '+message.from_user.id+' marked message "'+message.reply_to_message.text+'" as spam')
+            logging.info('ADMIN: User '+str(message.from_user.id)+' marked message "'+message.reply_to_message.text+'" as spam')
             user_id = message.reply_to_message.from_user.id
             user_name = message.reply_to_message.from_user.first_name
             mention = "["+user_name+"](tg://user?id="+str(user_id)+")"
-            bot.reply_to(message.reply_to_message, "Hey," + mention + " ," + cfgopt["users"]["nospamplease"], parse_mode="Markdown")
+            bot.reply_to(message.reply_to_message, "Hey," + mention + " ," + cfgopt["lang"]["nospamplease"], parse_mode="Markdown")
             bot.delete_message(message.reply_to_message.chat.id, message.reply_to_message.message_id)
+            bot.restrict_chat_member(message.reply_to_message.chat.id, message.reply_to_message.from_user.id, until_date=time.time()+ cfgopt["misc"]["spam_mute_duration"])
         bot.delete_message(message.chat.id, message.message_id)
 
     if(message.chat.type == "supergroup" and message.text.startswith("/nofight")):
-        #if (message.from_user.id in cfgopt["users"]["trusted"] and message.reply_to_message.from_user.id in cfgopt["users"]["trusted"]):
         if (message.from_user.id in cfgopt["users"]["trusted"] and message.reply_to_message is not None):
             if (time.time() - message.reply_to_message.date < cfgopt["misc"]["fightage"]):
               user_id = message.reply_to_message.from_user.id 
               user_name = message.reply_to_message.from_user.first_name 
               mention = "["+user_name+"](tg://user?id="+str(user_id)+")"            
-              bot.reply_to(message.reply_to_message, "CALM DOWN OR YOU WILL BE SHOT BY ROBOTIC OVERLORD! Some messages are deleted, users temporary muted (but it is all in log), don't fight please!", parse_mode="Markdown")
+              bot.reply_to(message.reply_to_message, cfgopt["lang"]["nofight"], parse_mode="Markdown")
               bot.delete_message(message.reply_to_message.chat.id, message.reply_to_message.message_id)
               bot.restrict_chat_member(message.reply_to_message.chat.id, message.reply_to_message.from_user.id, until_date=time.time()+ 300)
 
         bot.delete_message(message.chat.id, message.message_id)
 
-
-#@bot.message_handler(func=lambda message: message.forward_from_chat, content_types=["text", "photo", "video"])
-#def posts_from_channels(message):
-#    bot.reply_to(message, 'Hey, don\'t send this to our chat please')
-#    bot.delete_message(message.chat.id, message.message_id)
-
-
-#@bot.message_handler(func=lambda message: message.forward_from_message_id, content_types=["text", "photo", "video"])
-#def posts_from_channels(message):
-#    bot.reply_to(message, 'Msg fwd heh?')
-
-
 # TODO: Check new member id to estimate age?
-# TODO: Disable for unconfirmed members anything else than plain text messages?
 # TODO: Handle new members send picture spam? (test)
 @bot.message_handler(content_types=[
     "new_chat_members"
