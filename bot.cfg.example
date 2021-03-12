@@ -9,6 +9,7 @@ newmembers = []
 
 [misc]
 fightage = 300
+spam_mute_duration=300
 
 [lang]
 welcome="Welcome to our chat! Добро пожаловать в наш чат!"

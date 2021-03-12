@@ -24,7 +24,7 @@ with open(r'bot.cfg') as file:
   cfgopt = toml.load(file, _dict=dict)
   print(cfgopt)
 
-logging.basicConfig(filename='bot.log', level=logging.DEBUG)
+logging.basicConfig(filename='bot.log', level=logging.INFO)
 
 bot = telebot.TeleBot(cfgopt["auth"]["token"])
 
@@ -57,12 +57,13 @@ def commands_handling(message):
 
     if(message.chat.type == "supergroup" and message.text.startswith("/spam")):
         if (message.from_user.id in cfgopt["users"]["trusted"] and message.reply_to_message is not None):
-            logging.info('User '+message.from_user.id+' marked message "'+message.reply_to_message.text+'" as spam')
+            logging.info('ADMIN: User '+str(message.from_user.id)+' marked message "'+message.reply_to_message.text+'" as spam')
             user_id = message.reply_to_message.from_user.id
             user_name = message.reply_to_message.from_user.first_name
             mention = "["+user_name+"](tg://user?id="+str(user_id)+")"
-            bot.reply_to(message.reply_to_message, "Hey," + mention + " ," + cfgopt["users"]["nospamplease"], parse_mode="Markdown")
+            bot.reply_to(message.reply_to_message, "Hey," + mention + " ," + cfgopt["lang"]["nospamplease"], parse_mode="Markdown")
             bot.delete_message(message.reply_to_message.chat.id, message.reply_to_message.message_id)
+            bot.restrict_chat_member(message.reply_to_message.chat.id, message.reply_to_message.from_user.id, until_date=time.time()+ cfgopt["misc"]["spam_mute_duration"])
         bot.delete_message(message.chat.id, message.message_id)
 
     if(message.chat.type == "supergroup" and message.text.startswith("/nofight")):
