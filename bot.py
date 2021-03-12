@@ -2,11 +2,15 @@
 #pip3 install PyTelegramBotAPI==3.6.7
 #https://github.com/eternnoir/pyTelegramBotAPI
 import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from threading import Timer
 import toml
 import json
 import hashlib
 import time
 import logging
+
+
 
 def mention_string(message):
       user_id = message.from_user.id 
@@ -30,6 +34,8 @@ cfgopt["users"]["normal"] = []
 cfgopt["misc"] = {}
 cfgopt["misc"]["group"] = 0
 
+expiring_welcome = []
+
 with open(r'bot.cfg') as file:
   cfgopt = toml.load(file, _dict=dict)
   print(cfgopt)
@@ -37,6 +43,53 @@ with open(r'bot.cfg') as file:
 logging.basicConfig(filename='bot.log', level=logging.INFO)
 
 bot = telebot.TeleBot(cfgopt["auth"]["token"])
+
+def confirm_user_welcome(id):
+  print("Allowing user")
+  for i in expiring_welcome:
+    if (i["person"] == id):
+      print("Person found")
+      bot.delete_message(i["chat"], i["message"].message_id)
+      bot.restrict_chat_member(i["chat"], i["person"], can_send_messages=True,
+                                         can_send_media_messages=True,
+                                         can_send_other_messages=True,
+                                         can_add_web_page_previews=True)
+      expiring_welcome.remove(i)
+
+def housekeeping():
+  print("Housekeeping")
+  if (len(expiring_welcome) > 0):
+    for i in expiring_welcome:
+      # Expired
+      if (time.time() - i["timestamp"] > 30):
+        print("Expired welcome, guest overstay")
+        bot.kick_chat_member(i["chat"], i["person"], until_date=time.time()+60)
+        bot.delete_message(i["chat"], i["message"].message_id)
+        expiring_welcome.remove(i)
+
+  # Restart timer (i know, ugly, i just dont know python alternatives for this)
+  t = Timer(5.0, housekeeping)
+  t.start()
+
+def gen_markup():
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 2
+    markup.add(InlineKeyboardButton("Yes", callback_data="cb_yes"),
+                               InlineKeyboardButton("No", callback_data="cb_no"))
+    return markup
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_query(call):
+    if call.data == "cb_yes":
+        bot.answer_callback_query(call.id, "Thank you!")
+        print(call)
+        confirm_user_welcome(call.from_user.id)
+    elif call.data == "cb_no":
+        bot.answer_callback_query(call.id, "Thank you!")
+        print(call)
+        confirm_user_welcome(call.from_user.id)
+
 
 @bot.message_handler(commands=['start', 'help', 'trustme', 'userid', 'hackme', 'spam', 'nofight', 'debug', 'human'])
 def commands_handling(message):
@@ -53,8 +106,6 @@ def commands_handling(message):
         if (message.text.startswith("/userid")):
             bot.reply_to(message, "Hey, your userid is:" + str(message.from_user.id))
 
-        if (message.text.startswith("/debug")):
-            print(message)
 
 
 
@@ -70,8 +121,18 @@ def commands_handling(message):
 
 #{'user': {'id': 238455107, 'is_bot': False, 'first_name': 'Denys', 'username': 'nuclearcatlb', 'last_name': 'Fedoryshchenko', 'language_code': 'en'}, 'status': 'creator', 'until_date': None, 'can_be_edited': None, 'can_change_info': None, 'can_post_messages': None, 'can_edit_messages': None, 'can_delete_messages': None, 'can_invite_users': None, 'can_restrict_members': None, 'can_pin_messages': None, 'can_promote_members': None, 'can_send_messages': None, 'can_send_media_messages': None, 'can_send_other_messages': None, 'can_add_web_page_previews': None}
 
-    with open('bot.cfg', 'w') as f:
-      toml.dump(cfgopt, f)
+#    with open('bot.cfg', 'w') as f:
+#      toml.dump(cfgopt, f)
+
+    if (message.text.startswith("/debug")):
+          welcome = {}
+          welcome["message"] = bot.send_message(message.chat.id, cfgopt["lang"]["welcome"], reply_markup=gen_markup())
+          welcome["timestamp"] = time.time()
+          welcome["person"] = message.from_user.id
+          welcome["chat"] = message.chat.id
+          expiring_welcome.append(welcome)
+          bot.delete_message(message.chat.id, message.message_id)
+          #print(message)
 
 
     if(message.chat.type == "supergroup" and message.text.startswith("/spam")):
@@ -112,7 +173,16 @@ def commands_handling(message):
     "new_chat_members"
 ])
 def new_chat_member_handling(message):
-    bot.reply_to(message, cfgopt["lang"]["welcome"])
+    #bot.reply_to(message, cfgopt["lang"]["welcome"])
+    welcome = {}
+    welcome["message"] = bot.send_message(message.chat.id, cfgopt["lang"]["welcome"], reply_markup=gen_markup())
+    welcome["timestamp"] = time.time()
+    welcome["person"] = message.from_user.id
+    welcome["chat"] = message.chat.id
+    expiring_welcome.append(welcome)
+    bot.delete_message(message.chat.id, message.message_id)
+    bot.restrict_chat_member(message.chat.id, message.from_user.id, until_date=time.time()+300)
+
     cfgopt["users"]["newmembers"].append(message.from_user.id)
     with open('bot.cfg', 'w') as f:
       toml.dump(cfgopt, f)
@@ -120,6 +190,8 @@ def new_chat_member_handling(message):
 
 @bot.message_handler(func=lambda m: True, content_types=["text", "photo", "video"])
 def handle_all(message):
+    # debug
+    print(message)
     if (message.from_user.id in cfgopt["users"]["newmembers"] and message.entities != None and len(message.entities) > 0):
       user_id = message.from_user.id 
       user_name = message.from_user.first_name 
@@ -161,9 +233,16 @@ def handle_all(message):
 #    print(message)
 #    bot.reply_to(message, 'Debug, entities: ' + str(len(message.entities)))
 
+t = Timer(5.0, housekeeping)
+t.start()
+
+
+#while(1):
 try:
-  bot.polling(none_stop=True)
+   #bot.polling(none_stop=True)
+   bot.polling(none_stop=True)
 except Exception as e:
-        logger.error(e)
-        time.sleep(5)
+   #logger.error(e)
+   time.sleep(5)
+ 
 
