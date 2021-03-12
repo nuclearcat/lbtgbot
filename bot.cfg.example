@@ -4,12 +4,14 @@ trustedseed = "SomeSeed"
 #trustme = 1
 
 [users]
-trusted = [ 238455107,]
+trusted = []
 newmembers = []
+admins = []
 
 [misc]
 fightage = 300
 spam_mute_duration=300
+group=0
 
 [lang]
 welcome="Welcome to our chat! Добро пожаловать в наш чат!"

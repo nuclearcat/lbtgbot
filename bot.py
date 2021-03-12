@@ -8,6 +8,12 @@ import hashlib
 import time
 import logging
 
+def mention_string(message):
+      user_id = message.from_user.id 
+      user_name = message.from_user.first_name 
+      mention = "["+user_name+"](tg://user?id="+str(user_id)+")"
+      return mention
+
 def pretty(d, indent=0):
    for key, value in d.items():
       print('\t' * indent + str(key))
@@ -18,8 +24,11 @@ def pretty(d, indent=0):
 
 cfgopt = {}
 cfgopt["users"] = {}
+cfgopt["users"]["admins"] = []
 cfgopt["users"]["trusted"] = []
 cfgopt["users"]["normal"] = []
+cfgopt["misc"] = {}
+cfgopt["misc"]["group"] = 0
 
 with open(r'bot.cfg') as file:
   cfgopt = toml.load(file, _dict=dict)
@@ -29,7 +38,7 @@ logging.basicConfig(filename='bot.log', level=logging.INFO)
 
 bot = telebot.TeleBot(cfgopt["auth"]["token"])
 
-@bot.message_handler(commands=['start', 'help', 'trustme', 'userid', 'hackme', 'spam', 'nofight', 'debug','getadmin'])
+@bot.message_handler(commands=['start', 'help', 'trustme', 'userid', 'hackme', 'spam', 'nofight', 'debug', 'human'])
 def commands_handling(message):
 #    print(message)
     if(message.chat.type == "private"):
@@ -48,6 +57,8 @@ def commands_handling(message):
             print(message)
 
 
+
+
 #        if (message.text.startswith("/trustme") and cfgopt["auth"]["trustme"] == 1 and message.from_user.id not in cfgopt["users"]["newmembers"]):
 #         if (not message.from_user.id in cfgopt["users"]["trusted"]):
 #          bot.reply_to(message, "Hello Master, i added you to trusted list")
@@ -57,11 +68,10 @@ def commands_handling(message):
 #         else:
 #            bot.reply_to(message, "You are already trusted or bot have bug")
 
-    if (message.text.startswith("/getadmin")):
-           info = bot.get_chat_member(message.chat.id, message.from_user.id)
-           print("Getadmin debug")
-           print(info)
-           bot.delete_message(message.chat.id, message.message_id)
+#{'user': {'id': 238455107, 'is_bot': False, 'first_name': 'Denys', 'username': 'nuclearcatlb', 'last_name': 'Fedoryshchenko', 'language_code': 'en'}, 'status': 'creator', 'until_date': None, 'can_be_edited': None, 'can_change_info': None, 'can_post_messages': None, 'can_edit_messages': None, 'can_delete_messages': None, 'can_invite_users': None, 'can_restrict_members': None, 'can_pin_messages': None, 'can_promote_members': None, 'can_send_messages': None, 'can_send_media_messages': None, 'can_send_other_messages': None, 'can_add_web_page_previews': None}
+
+    with open('bot.cfg', 'w') as f:
+      toml.dump(cfgopt, f)
 
 
     if(message.chat.type == "supergroup" and message.text.startswith("/spam")):
@@ -87,6 +97,15 @@ def commands_handling(message):
 
         bot.delete_message(message.chat.id, message.message_id)
 
+    if(message.chat.type == "supergroup" and message.text.startswith("/human")):
+      logging.info('ADMIN: User '+str(message.from_user.id)+' marked person "'+mention_string(message.reply_to_message)+'" as human')
+      cfgopt["users"]["newmembers"].remove(message.reply_to_message.from_user.id)
+      with open('bot.cfg', 'w') as f:
+        toml.dump(cfgopt, f)
+
+      bot.delete_message(message.chat.id, message.message_id)
+
+
 # TODO: Check new member id to estimate age?
 # TODO: Handle new members send picture spam? (test)
 @bot.message_handler(content_types=[
@@ -104,11 +123,39 @@ def handle_all(message):
     if (message.from_user.id in cfgopt["users"]["newmembers"] and message.entities != None and len(message.entities) > 0):
       user_id = message.from_user.id 
       user_name = message.from_user.first_name 
-      mention = "["+user_name+"](tg://user?id="+str(user_id)+")"            
+      mention = "["+user_name+"](tg://user?id="+str(user_id)+")"
 
       bot.reply_to(message, cfgopt["lang"]["nolinks"])
       bot.delete_message(message.chat.id, message.message_id)
       bot.restrict_chat_member(message.chat.id, message.from_user.id, until_date=time.time()+ 60)
+
+    
+    if(message.chat.type == "supergroup"):
+      if (cfgopt["misc"]["group"] == 0):
+        cfgopt["misc"]["group"] = message.chat.id
+        with open('bot.cfg', 'w') as f:
+         toml.dump(cfgopt, f)
+        bot.reply_to(message.reply_to_message, "Bot assigned to this group", parse_mode="Markdown")
+      else:
+        if (cfgopt["misc"]["group"] != message.chat.id):
+          bot.reply_to(message, "This bot doesnt belong to this group", parse_mode="Markdown")
+          return
+
+
+    if (len(cfgopt["users"]["admins"]) == 0):
+           info = bot.get_chat_administrators(message.chat.id)
+           for i in info:
+            #print(i)
+            #print(i.user.id)
+            cfgopt["users"]["admins"].append(i.user.id)
+            cfgopt["users"]["trusted"].append(i.user.id)
+           
+            with open('bot.cfg', 'w') as f:
+             toml.dump(cfgopt, f)
+
+           bot.reply_to(message, "Bot initial setup completed", parse_mode="Markdown")
+           #bot.delete_message(message.chat.id, message.message_id)
+
 
 #    print("DEBUG:")
 #    print(message)
