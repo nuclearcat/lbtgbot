@@ -6,6 +6,7 @@ import toml
 import json
 import hashlib
 import time
+import logging
 
 def pretty(d, indent=0):
    for key, value in d.items():
@@ -23,6 +24,8 @@ with open(r'bot.cfg') as file:
   cfgopt = toml.load(file, _dict=dict)
   print(cfgopt)
 
+logging.basicConfig(filename='bot.log', encoding='utf-8', level=logging.DEBUG)
+
 bot = telebot.TeleBot(cfgopt["auth"]["token"])
 
 @bot.message_handler(commands=['start', 'help', 'trustme', 'userid', 'hackme', 'spam', 'nofight', 'debug'])
@@ -30,7 +33,7 @@ def commands_handling(message):
     print(message)
     if(message.chat.type == "private"):
         if (message.text.startswith("/start")):
-            bot.reply_to(message, "Hey! Unfortunately this bot dont have any help message, yet")
+            bot.reply_to(message, cfgopt["users"]["startmsg"])
 
 #        if (message.text.startswith("/trustme")):
 #            print("trustme " + str(message.from_user.id))
@@ -43,22 +46,22 @@ def commands_handling(message):
         if (message.text.startswith("/debug")):
             print(message)
 
-        if (message.text.startswith("/trustme") and cfgopt["auth"]["trustme"] == 1 and message.from_user.id not in cfgopt["users"]["newmembers"]):
-         if (not message.from_user.id in cfgopt["users"]["trusted"]):
-          bot.reply_to(message, "Hello Master, i added you to trusted list")
-          cfgopt["users"]["trusted"].append(message.from_user.id)
-          with open('bot.cfg', 'w') as f:
-              toml.dump(cfgopt, f)
-         else:
-            bot.reply_to(message, "You are already trusted or bot have bug")
+#        if (message.text.startswith("/trustme") and cfgopt["auth"]["trustme"] == 1 and message.from_user.id not in cfgopt["users"]["newmembers"]):
+#         if (not message.from_user.id in cfgopt["users"]["trusted"]):
+#          bot.reply_to(message, "Hello Master, i added you to trusted list")
+#          cfgopt["users"]["trusted"].append(message.from_user.id)
+#          with open('bot.cfg', 'w') as f:
+#              toml.dump(cfgopt, f)
+#         else:
+#            bot.reply_to(message, "You are already trusted or bot have bug")
 
     if(message.chat.type == "supergroup" and message.text.startswith("/spam")):
-        #if (message.from_user.id in cfgopt["users"]["trusted"] and message.reply_to_message.from_user.id in cfgopt["users"]["trusted"]):
         if (message.from_user.id in cfgopt["users"]["trusted"] and message.reply_to_message is not None):
-            user_id = message.reply_to_message.from_user.id 
-            user_name = message.reply_to_message.from_user.first_name 
-            mention = "["+user_name+"](tg://user?id="+str(user_id)+")"            
-            bot.reply_to(message.reply_to_message, "Hey," + mention + " ,don't spam please!", parse_mode="Markdown")
+            logging.info('User '+message.from_user.id+' marked message "'+message.reply_to_message.text+'" as spam')
+            user_id = message.reply_to_message.from_user.id
+            user_name = message.reply_to_message.from_user.first_name
+            mention = "["+user_name+"](tg://user?id="+str(user_id)+")"
+            bot.reply_to(message.reply_to_message, "Hey," + mention + " ," + cfgopt["users"]["nospamplease"], parse_mode="Markdown")
             bot.delete_message(message.reply_to_message.chat.id, message.reply_to_message.message_id)
         bot.delete_message(message.chat.id, message.message_id)
 
