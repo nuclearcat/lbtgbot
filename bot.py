@@ -24,7 +24,7 @@ with open(r'bot.cfg') as file:
   cfgopt = toml.load(file, _dict=dict)
   print(cfgopt)
 
-logging.basicConfig(filename='bot.log', encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(filename='bot.log', level=logging.DEBUG)
 
 bot = telebot.TeleBot(cfgopt["auth"]["token"])
 
