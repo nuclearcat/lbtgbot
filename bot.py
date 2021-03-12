@@ -94,7 +94,7 @@ def commands_handling(message):
     "new_chat_members"
 ])
 def new_chat_member_handling(message):
-    bot.reply_to(message, "Welcome to our chat!")
+    bot.reply_to(message, cfgopt["users"]["welcome"])
     cfgopt["users"]["newmembers"].append(message.from_user.id)
     with open('bot.cfg', 'w') as f:
       toml.dump(cfgopt, f)
@@ -107,7 +107,7 @@ def handle_all(message):
       user_name = message.from_user.first_name 
       mention = "["+user_name+"](tg://user?id="+str(user_id)+")"            
 
-      bot.reply_to(message, 'Hey, please dont send any links/etc, you are temporary muted. After mute expires, as you are new member, please introduce yourself(text only), so we can know if you are human, not spammer.')
+      bot.reply_to(message, cfgopt["users"]["nolinks"])
       bot.delete_message(message.chat.id, message.message_id)
       bot.restrict_chat_member(message.chat.id, message.from_user.id, until_date=time.time()+ 60)
 
