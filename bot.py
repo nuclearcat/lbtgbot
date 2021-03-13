@@ -10,8 +10,6 @@ import hashlib
 import time
 import logging
 
-
-
 def mention_string(message):
       user_id = message.from_user.id 
       user_name = message.from_user.first_name 
