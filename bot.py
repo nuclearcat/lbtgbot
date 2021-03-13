@@ -150,7 +150,7 @@ def commands_handling(message):
 ])
 def new_chat_member_handling(message):
     welcome = {}
-    welcome["message"] = bot.send_message(message.chat.id, cfgopt["lang"]["welcome"], reply_markup=gen_markup())
+    welcome["message"] = bot.send_message(message.chat.id, mention_string(message) + "! " + cfgopt["lang"]["welcome"], reply_markup=gen_markup(), parse_mode="Markdown")
     welcome["timestamp"] = time.time()
     welcome["person"] = message.from_user.id
     welcome["chat"] = message.chat.id
