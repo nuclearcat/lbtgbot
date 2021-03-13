@@ -50,6 +50,11 @@ def confirm_user_welcome(id):
     if (i["person"] == id):
       print("Person found")
       bot.delete_message(i["chat"], i["message"].message_id)
+      # Remove user from newusers list
+      cfgopt["users"]["newmembers"].remove(i["person"])
+      # And save
+      with open('bot.cfg', 'w') as f:
+        toml.dump(cfgopt, f)
       bot.restrict_chat_member(i["chat"], i["person"], can_send_messages=True,
                                          can_send_media_messages=True,
                                          can_send_other_messages=True,
@@ -66,6 +71,7 @@ def housekeeping():
         bot.kick_chat_member(i["chat"], i["person"], until_date=time.time()+60)
         bot.delete_message(i["chat"], i["message"].message_id)
         expiring_welcome.remove(i)
+
 
   # Restart timer (i know, ugly, i just dont know python alternatives for this)
   t = Timer(5.0, housekeeping)
@@ -98,82 +104,53 @@ def commands_handling(message):
         if (message.text.startswith("/start")):
             bot.reply_to(message, cfgopt["users"]["startmsg"])
 
-#        if (message.text.startswith("/trustme")):
-#            print("trustme " + str(message.from_user.id))
-#            result = hashlib.sha256((cfgopt["auth"]["trustedseed"] + str(message.from_user.id)).encode('utf-8')).hexdigest()
-#            print("trustme request hash to match " + result)
-
-        if (message.text.startswith("/userid")):
-            bot.reply_to(message, "Hey, your userid is:" + str(message.from_user.id))
-
-
-
+#    if (message.text.startswith("/debug")):
+#          welcome = {}
+#          welcome["message"] = bot.send_message(message.chat.id, cfgopt["lang"]["welcome"], reply_markup=gen_markup())
+#          welcome["timestamp"] = time.time()
+#          welcome["person"] = message.from_user.id
+#          welcome["chat"] = message.chat.id
+#          expiring_welcome.append(welcome)
+#          bot.delete_message(message.chat.id, message.message_id)
 
 
-#        if (message.text.startswith("/trustme") and cfgopt["auth"]["trustme"] == 1 and message.from_user.id not in cfgopt["users"]["newmembers"]):
-#         if (not message.from_user.id in cfgopt["users"]["trusted"]):
-#          bot.reply_to(message, "Hello Master, i added you to trusted list")
-#          cfgopt["users"]["trusted"].append(message.from_user.id)
-#          with open('bot.cfg', 'w') as f:
-#              toml.dump(cfgopt, f)
-#         else:
-#            bot.reply_to(message, "You are already trusted or bot have bug")
 
-#{'user': {'id': 238455107, 'is_bot': False, 'first_name': 'Denys', 'username': 'nuclearcatlb', 'last_name': 'Fedoryshchenko', 'language_code': 'en'}, 'status': 'creator', 'until_date': None, 'can_be_edited': None, 'can_change_info': None, 'can_post_messages': None, 'can_edit_messages': None, 'can_delete_messages': None, 'can_invite_users': None, 'can_restrict_members': None, 'can_pin_messages': None, 'can_promote_members': None, 'can_send_messages': None, 'can_send_media_messages': None, 'can_send_other_messages': None, 'can_add_web_page_previews': None}
+#    if(message.chat.type == "supergroup" and message.text.startswith("/spam")):
+#        if (message.from_user.id in cfgopt["users"]["trusted"] and message.reply_to_message is not None):
+#            logging.info('ADMIN: User '+str(message.from_user.id)+' marked message "'+message.reply_to_message.text+'" as spam')
+#            user_id = message.reply_to_message.from_user.id
+#            user_name = message.reply_to_message.from_user.first_name
+#            mention = "["+user_name+"](tg://user?id="+str(user_id)+")"
+#            bot.reply_to(message.reply_to_message, "Hey," + mention + " ," + cfgopt["lang"]["nospamplease"], parse_mode="Markdown")
+#            bot.delete_message(message.reply_to_message.chat.id, message.reply_to_message.message_id)
+#            bot.restrict_chat_member(message.reply_to_message.chat.id, message.reply_to_message.from_user.id, until_date=time.time()+ cfgopt["misc"]["spam_mute_duration"])
+#        bot.delete_message(message.chat.id, message.message_id)
 
-#    with open('bot.cfg', 'w') as f:
-#      toml.dump(cfgopt, f)
+#    if(message.chat.type == "supergroup" and message.text.startswith("/nofight")):
+#        if (message.from_user.id in cfgopt["users"]["trusted"] and message.reply_to_message is not None):
+#            if (time.time() - message.reply_to_message.date < cfgopt["misc"]["fightage"]):
+#              user_id = message.reply_to_message.from_user.id 
+#              user_name = message.reply_to_message.from_user.first_name 
+#              mention = "["+user_name+"](tg://user?id="+str(user_id)+")"            
+#              bot.reply_to(message.reply_to_message, cfgopt["lang"]["nofight"], parse_mode="Markdown")
+#              bot.delete_message(message.reply_to_message.chat.id, message.reply_to_message.message_id)
+#              bot.restrict_chat_member(message.reply_to_message.chat.id, message.reply_to_message.from_user.id, until_date=time.time()+ 300)
+#        bot.delete_message(message.chat.id, message.message_id)
 
-    if (message.text.startswith("/debug")):
-          welcome = {}
-          welcome["message"] = bot.send_message(message.chat.id, cfgopt["lang"]["welcome"], reply_markup=gen_markup())
-          welcome["timestamp"] = time.time()
-          welcome["person"] = message.from_user.id
-          welcome["chat"] = message.chat.id
-          expiring_welcome.append(welcome)
-          bot.delete_message(message.chat.id, message.message_id)
-          #print(message)
-
-
-    if(message.chat.type == "supergroup" and message.text.startswith("/spam")):
-        if (message.from_user.id in cfgopt["users"]["trusted"] and message.reply_to_message is not None):
-            logging.info('ADMIN: User '+str(message.from_user.id)+' marked message "'+message.reply_to_message.text+'" as spam')
-            user_id = message.reply_to_message.from_user.id
-            user_name = message.reply_to_message.from_user.first_name
-            mention = "["+user_name+"](tg://user?id="+str(user_id)+")"
-            bot.reply_to(message.reply_to_message, "Hey," + mention + " ," + cfgopt["lang"]["nospamplease"], parse_mode="Markdown")
-            bot.delete_message(message.reply_to_message.chat.id, message.reply_to_message.message_id)
-            bot.restrict_chat_member(message.reply_to_message.chat.id, message.reply_to_message.from_user.id, until_date=time.time()+ cfgopt["misc"]["spam_mute_duration"])
-        bot.delete_message(message.chat.id, message.message_id)
-
-    if(message.chat.type == "supergroup" and message.text.startswith("/nofight")):
-        if (message.from_user.id in cfgopt["users"]["trusted"] and message.reply_to_message is not None):
-            if (time.time() - message.reply_to_message.date < cfgopt["misc"]["fightage"]):
-              user_id = message.reply_to_message.from_user.id 
-              user_name = message.reply_to_message.from_user.first_name 
-              mention = "["+user_name+"](tg://user?id="+str(user_id)+")"            
-              bot.reply_to(message.reply_to_message, cfgopt["lang"]["nofight"], parse_mode="Markdown")
-              bot.delete_message(message.reply_to_message.chat.id, message.reply_to_message.message_id)
-              bot.restrict_chat_member(message.reply_to_message.chat.id, message.reply_to_message.from_user.id, until_date=time.time()+ 300)
-
-        bot.delete_message(message.chat.id, message.message_id)
-
-    if(message.chat.type == "supergroup" and message.text.startswith("/human")):
-      logging.info('ADMIN: User '+str(message.from_user.id)+' marked person "'+mention_string(message.reply_to_message)+'" as human')
-      cfgopt["users"]["newmembers"].remove(message.reply_to_message.from_user.id)
-      with open('bot.cfg', 'w') as f:
-        toml.dump(cfgopt, f)
-
-      bot.delete_message(message.chat.id, message.message_id)
+#    if(message.chat.type == "supergroup" and message.text.startswith("/human")):
+#      logging.info('ADMIN: User '+str(message.from_user.id)+' marked person "'+mention_string(message.reply_to_message)+'" as human')
+#      cfgopt["users"]["newmembers"].remove(message.reply_to_message.from_user.id)
+#      with open('bot.cfg', 'w') as f:
+#        toml.dump(cfgopt, f)
+#      bot.delete_message(message.chat.id, message.message_id)
 
 
+# Handling new members
 # TODO: Check new member id to estimate age?
-# TODO: Handle new members send picture spam? (test)
 @bot.message_handler(content_types=[
     "new_chat_members"
 ])
 def new_chat_member_handling(message):
-    #bot.reply_to(message, cfgopt["lang"]["welcome"])
     welcome = {}
     welcome["message"] = bot.send_message(message.chat.id, cfgopt["lang"]["welcome"], reply_markup=gen_markup())
     welcome["timestamp"] = time.time()
@@ -187,11 +164,13 @@ def new_chat_member_handling(message):
     with open('bot.cfg', 'w') as f:
       toml.dump(cfgopt, f)
 
-
+# Handle all messages
 @bot.message_handler(func=lambda m: True, content_types=["text", "photo", "video"])
 def handle_all(message):
     # debug
-    print(message)
+    #print(message)
+
+    # Message contain some links
     if (message.from_user.id in cfgopt["users"]["newmembers"] and message.entities != None and len(message.entities) > 0):
       user_id = message.from_user.id 
       user_name = message.from_user.first_name 
@@ -201,7 +180,7 @@ def handle_all(message):
       bot.delete_message(message.chat.id, message.message_id)
       bot.restrict_chat_member(message.chat.id, message.from_user.id, until_date=time.time()+ 60)
 
-    
+    # This is just initial configuration trigger and verification if bot belongs to his own group
     if(message.chat.type == "supergroup"):
       if (cfgopt["misc"]["group"] == 0):
         cfgopt["misc"]["group"] = message.chat.id
@@ -213,7 +192,7 @@ def handle_all(message):
           bot.reply_to(message, "This bot doesnt belong to this group", parse_mode="Markdown")
           return
 
-
+    # Fetch admins list (todo: update them?)
     if (len(cfgopt["users"]["admins"]) == 0):
            info = bot.get_chat_administrators(message.chat.id)
            for i in info:
@@ -226,20 +205,14 @@ def handle_all(message):
              toml.dump(cfgopt, f)
 
            bot.reply_to(message, "Bot initial setup completed", parse_mode="Markdown")
+           # TODO: expire this message
            #bot.delete_message(message.chat.id, message.message_id)
-
-
-#    print("DEBUG:")
-#    print(message)
-#    bot.reply_to(message, 'Debug, entities: ' + str(len(message.entities)))
 
 t = Timer(5.0, housekeeping)
 t.start()
 
 
-#while(1):
 try:
-   #bot.polling(none_stop=True)
    bot.polling(none_stop=True)
 except Exception as e:
    #logger.error(e)
