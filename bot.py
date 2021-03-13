@@ -9,6 +9,12 @@ import json
 import hashlib
 import time
 import logging
+import signal
+import sys, os
+
+def signal_handler(sig, frame):
+    print('You pressed Ctrl+C!')
+    os._exit(1)
 
 def mention_string(message):
       user_id = message.from_user.id 
@@ -41,6 +47,7 @@ with open(r'bot.cfg') as file:
 logging.basicConfig(filename='bot.log', level=logging.INFO)
 
 bot = telebot.TeleBot(cfgopt["auth"]["token"])
+signal.signal(signal.SIGINT, signal_handler)
 
 def confirm_user_welcome(id):
   print("Allowing user")
@@ -60,7 +67,8 @@ def confirm_user_welcome(id):
       expiring_welcome.remove(i)
 
 def housekeeping():
-  print("Housekeeping")
+  print("Housekeeping ")
+
   if (len(expiring_welcome) > 0):
     for i in expiring_welcome:
       # Expired
@@ -210,9 +218,10 @@ t = Timer(5.0, housekeeping)
 t.start()
 
 
-try:
+while(1):
+ try:
    bot.polling(none_stop=True)
-except Exception as e:
+ except Exception as e:
    #logger.error(e)
    time.sleep(5)
  
