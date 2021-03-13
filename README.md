@@ -1,11 +1,5 @@
-Bot have several categories of users:
-#### Default:
-  People who was present in chat before bot launch and not market as trusted
-#### Trusted:
-  Who sent special key to bot or have admin privileges
-#### New Members:
-  People joined chat recently.
-
-TODO:
-Bot will not allow "New Members" to send anything else than plaintext, unless someone trusted reply to their message with command /human, to remove "New Member" status
-
+At current moment bot just show to new users two buttons, asking to press any. It will also mute user.
+If none pressed, user will be kicked after timeout.
+If he press, he will be unmuted.
+Thats enough to defeat most of spambots at current moment.
+It's easy to make bot more clever.
