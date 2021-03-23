@@ -16,9 +16,9 @@ def signal_handler(sig, frame):
     print('You pressed Ctrl+C!')
     os._exit(1)
 
-def mention_string(message):
-      user_id = message.from_user.id 
-      user_name = message.from_user.first_name 
+def mention_string(user):
+      user_id = user.id 
+      user_name = user.first_name 
       mention = "["+user_name+"](tg://user?id="+str(user_id)+")"
       return mention
 
@@ -103,12 +103,17 @@ def callback_query(call):
         confirm_user_welcome(call.from_user.id)
 
 
-@bot.message_handler(commands=['start', 'help', 'trustme', 'userid', 'hackme', 'spam', 'nofight', 'debug', 'human'])
+@bot.message_handler(commands=['start', 'help', 'trustme', 'userid', 'hackme', 'spam', 'nofight', 'id', 'human'])
 def commands_handling(message):
 #    print(message)
     if(message.chat.type == "private"):
         if (message.text.startswith("/start")):
             bot.reply_to(message, cfgopt["users"]["startmsg"])
+
+        if (message.text.startswith("/id")):
+            print("ID request received")
+            bot.reply_to(message, cfgopt["misc"]["id"])
+
 
 #    if (message.text.startswith("/debug")):
 #          welcome = {}
@@ -157,18 +162,28 @@ def commands_handling(message):
     "new_chat_members"
 ])
 def new_chat_member_handling(message):
-    welcome = {}
-    welcome["message"] = bot.send_message(message.chat.id, mention_string(message) + "! " + cfgopt["lang"]["welcome"], reply_markup=gen_markup(), parse_mode="Markdown")
-    welcome["timestamp"] = time.time()
-    welcome["person"] = message.from_user.id
-    welcome["chat"] = message.chat.id
-    expiring_welcome.append(welcome)
-    bot.delete_message(message.chat.id, message.message_id)
-    bot.restrict_chat_member(message.chat.id, message.from_user.id, until_date=time.time()+300)
+    # TODO handle multiple members
+    #if (len(message.new_chat_members) > 0):
+    #  print(message.new_chat_members[0])
 
-    cfgopt["users"]["newmembers"].append(message.from_user.id)
-    with open('bot.cfg', 'w') as f:
-      toml.dump(cfgopt, f)
+    # Check if it is chat admin invited someone
+    info = bot.get_chat_administrators(message.chat.id)
+    for i in info:
+      if (i.user.id == message.from_user.id):
+        return
+
+    for x in message.new_chat_members:
+      welcome = {}
+      welcome["message"] = bot.send_message(message.chat.id, mention_string(x) + "! " + cfgopt["lang"]["welcome"], reply_markup=gen_markup(), parse_mode="Markdown")
+      welcome["timestamp"] = time.time()
+      welcome["person"] = x.id
+      welcome["chat"] = message.chat.id
+      expiring_welcome.append(welcome)
+      bot.delete_message(message.chat.id, message.message_id)
+      bot.restrict_chat_member(message.chat.id, x.id, until_date=time.time()+300)
+      cfgopt["users"]["newmembers"].append(x.id)
+      with open('bot.cfg', 'w') as f:
+        toml.dump(cfgopt, f)
 
 # Handle all messages
 @bot.message_handler(func=lambda m: True, content_types=["text", "photo", "video"])
