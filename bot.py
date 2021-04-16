@@ -65,6 +65,8 @@ def confirm_user_welcome(id):
                                          can_send_other_messages=True,
                                          can_add_web_page_previews=True)
       expiring_welcome.remove(i)
+      return 1
+  return 0
 
 def housekeeping():
   print("Housekeeping ")
@@ -93,15 +95,15 @@ def gen_markup():
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
+    rcode = 0
     if call.data == "cb_yes":
-        bot.answer_callback_query(call.id, "Thank you!")
-        print(call)
-        confirm_user_welcome(call.from_user.id)
+        rcode = confirm_user_welcome(call.from_user.id)
     elif call.data == "cb_no":
-        bot.answer_callback_query(call.id, "Thank you!")
-        print(call)
-        confirm_user_welcome(call.from_user.id)
+        rcode = confirm_user_welcome(call.from_user.id)
 
+    print(call)
+    if (rcode == 0):
+      bot.answer_callback_query(call.id, "This question is expired or not for you")
 
 @bot.message_handler(commands=['start', 'help', 'trustme', 'userid', 'hackme', 'spam', 'nofight', 'id', 'human'])
 def commands_handling(message):
