@@ -37,6 +37,9 @@ cfgopt["users"]["trusted"] = []
 cfgopt["users"]["normal"] = []
 cfgopt["misc"] = {}
 cfgopt["misc"]["group"] = 0
+cfgopt["misc"]["debug"] = 0
+cfgopt["misc"]["timeout"] = 60
+cfgopt["misc"]["adminchat"] = 0
 
 expiring_welcome = []
 
@@ -74,9 +77,16 @@ def housekeeping():
   if (len(expiring_welcome) > 0):
     for i in expiring_welcome:
       # Expired
-      if (time.time() - i["timestamp"] > 30):
+      timeout = cfgopt["misc"].get("timeout")
+      if (not timeout):
+        timeout = 60
+        cfgopt["misc"]["timeout"] = 60
+        with open('bot.cfg', 'w') as f:
+          toml.dump(cfgopt, f)
+
+      if (time.time() - i["timestamp"] > cfgopt["misc"]["timeout"]):
         print("Expired welcome, guest overstay")
-        bot.kick_chat_member(i["chat"], i["person"], until_date=time.time()+60)
+        bot.kick_chat_member(i["chat"], i["person"], until_date=time.time()+30)
         bot.delete_message(i["chat"], i["message"].message_id)
         expiring_welcome.remove(i)
 
@@ -105,9 +115,12 @@ def callback_query(call):
     if (rcode == 0):
       bot.answer_callback_query(call.id, "This question is expired or not for you")
 
-@bot.message_handler(commands=['start', 'help', 'trustme', 'userid', 'hackme', 'spam', 'nofight', 'id', 'human'])
+@bot.message_handler(commands=['start', 'id', 'adminchat'])
 def commands_handling(message):
-#    print(message)
+    #debug = cfgopt["misc"].get("debug")
+    #if (debug == 1):
+    print("DEBUG:" + str(message))
+
     if(message.chat.type == "private"):
         if (message.text.startswith("/start")):
             bot.reply_to(message, cfgopt["users"]["startmsg"])
@@ -115,6 +128,25 @@ def commands_handling(message):
         if (message.text.startswith("/id")):
             print("ID request received")
             bot.reply_to(message, cfgopt["misc"]["id"])
+
+        if (message.text.startswith("/adminchat")):
+            print("Admin chat request received")
+            info = bot.get_chat_administrators(cfgopt["misc"]["group"])
+            adminok = 0
+            for i in info:
+              adminok = 1
+            if (adminok != 1):
+                print("Illegal adminchat request from " + str(message.from_user.id))
+                bot.reply_to(message, "Access denied, request logged")
+                return
+
+            cfgopt["misc"]["adminchat"] = message.chat.id;
+            bot.reply_to(message, "Admin chat configured")
+            with open('bot.cfg', 'w') as f:
+             toml.dump(cfgopt, f)
+
+            #bot.reply_to(message, cfgopt["misc"]["id"])
+
 
 
 #    if (message.text.startswith("/debug")):
@@ -169,7 +201,11 @@ def new_chat_member_handling(message):
     #  print(message.new_chat_members[0])
 
     # Check if it is chat admin invited someone
-    info = bot.get_chat_administrators(message.chat.id)
+    
+    if (message.chat.id != cfgopt["misc"]["group"]):
+      return
+    info = bot.get_chat_administrators(cfgopt["misc"]["group"])
+
     for i in info:
       if (i.user.id == message.from_user.id):
         return
@@ -181,17 +217,23 @@ def new_chat_member_handling(message):
       welcome["person"] = x.id
       welcome["chat"] = message.chat.id
       expiring_welcome.append(welcome)
+
       bot.delete_message(message.chat.id, message.message_id)
       bot.restrict_chat_member(message.chat.id, x.id, until_date=time.time()+300)
       cfgopt["users"]["newmembers"].append(x.id)
-      with open('bot.cfg', 'w') as f:
-        toml.dump(cfgopt, f)
+      if (cfgopt["misc"]["adminchat"] != 0):
+        bot.send_message(cfgopt["misc"]["adminchat"], mention_string(x) + "arrived to the chat")
+        with open('bot.cfg', 'w') as f:
+          toml.dump(cfgopt, f)
+      else:
+        print("Admin chat not configured")
 
 # Handle all messages
 @bot.message_handler(func=lambda m: True, content_types=["text", "photo", "video"])
 def handle_all(message):
-    # debug
-    #print(message)
+    debug = cfgopt["misc"].get("debug")
+    if (debug == 1):
+      print(message)
 
     # Message contain some links
     if (message.from_user.id in cfgopt["users"]["newmembers"] and message.entities != None and len(message.entities) > 0):
@@ -211,13 +253,14 @@ def handle_all(message):
          toml.dump(cfgopt, f)
         bot.reply_to(message.reply_to_message, "Bot assigned to this group", parse_mode="Markdown")
       else:
-        if (cfgopt["misc"]["group"] != message.chat.id):
-          bot.reply_to(message, "This bot doesnt belong to this group", parse_mode="Markdown")
-          return
+        return
+#        if (cfgopt["misc"]["group"] != message.chat.id):
+#          bot.reply_to(message, "This bot doesnt belong to this group", parse_mode="Markdown")
+#          return
 
     # Fetch admins list (todo: update them?)
     if (len(cfgopt["users"]["admins"]) == 0):
-           info = bot.get_chat_administrators(message.chat.id)
+           info = bot.get_chat_administrators(cfgopt["misc"]["group"])
            for i in info:
             #print(i)
             #print(i.user.id)
